@@ -10,6 +10,8 @@ import numpy as np
 
 import enwofost
 
+from block_reader import extract_chunks
+
 def get_corners_lat_long(fname):
     """Retrieves the corners of a GDAL file, and returns the 
     corners and centre locations in Longitude/latitude.
@@ -128,10 +130,82 @@ def run_wofost_ensembles(corner_locs, en_size=20, start_date = datetime.date(201
     ens_yield = np.array(ens_yield).reshape((en_size*5, -1))
     ens_days = np.array(ens_days).reshape((en_size*5, -1))
     return (ens_days, ens_lai, ens_yield)
+
+
 if __name__ == "__main__":
     files, dates, doys, corner_locs = find_lai_files(
         "/home/ucfahm0/S2_data", "T50SLH"
     )
     
     ens_days, ens_lai, ens_yield = run_wofost_ensembles(
-        corner_locs, en_size=20, start_date = datetime.date(2017,10,12))
+        corner_locs, en_size=10, start_date = datetime.date(2017,10,12))
+    
+    matched_files = []
+    matched_ensemble = []
+    matched_ens_times = []
+    matched_ens_lai = []
+    for i, lai_file in enumerate(files):
+        curr_date = doys[i]
+        try:
+            curr_ens_loc = ens_days[0].tolist().index(curr_date)
+        except ValueError:
+            continue
+        matched_ensemble.append(curr_ens_loc)
+        matched_ens_times.append(curr_date)
+        matched_ens_lai.append(ens_lai[:, curr_ens_loc])
+        matched_files.append(lai_file)
+        #today_distance = (this_lai[mask])[:, None] - \
+        #                ens_lai[:, curr_ens_loc]
+
+
+    matched_ens_lai = np.array(matched_ens_lai)
+    threshold = 3.5
+    assimilated_yield_mean = []
+    assimilated_yield_std = []
+    for (i, (file_info, this_X, this_Y, nx_valid, 
+         ny_valid, data_chunks)) in enumerate(extract_chunks(
+                                [str(f) for f in matched_files])):
+        print("Chunk #", i+1)
+        data_chunks = np.array(data_chunks)
+        mask = np.logical_and(data_chunks >= 0.0,
+                              data_chunks <= 10.)
+        data_chunks[~mask] = np.nan
+        
+        D = data_chunks[:, :, :, None] - np.array(matched_ens_lai)[:, None, None, :]
+        
+        m1 = np.abs(D) < threshold
+        m1[~mask] = True
+        sel = np.all(m1, axis=0)
+        Y=ens_yield.squeeze()[:, None, None] * sel.transpose(2, 0, 1)
+        Y[Y==0.0] = np.nan
+        #assimilated_yields[this_X:(this_X + ny_valid), 
+        #                   this_Y:(this_Y + nx_valid), 0] = np.nanmean(Y, axis=0)
+        #assimilated_yields[this_X:(this_X + ny_valid), 
+        #                   this_Y:(this_Y + nx_valid), 1] = np.nanstd(Y, axis=0)
+        assimilated_yield_mean.append(np.nanmean(Y, axis=0))
+        assimilated_yield_std.append(np.nanstd(Y, axis=0))
+        
+    
+    
+    #####def calculate_cost(x):
+        #####return np.sum(x**2, axis=1)
+    
+    
+    #####def select_sensible(x, thresh=1.5):
+        #####selected = abs(x) <= thresh
+        
+    
+    #####weights_array = np.zeros((5490, 5490)) 
+    #####for i, lai_file in enumerate(files):
+        #####curr_date = doys[i]
+        #####try:
+            #####curr_ens_loc = ens_days[0].tolist().index(curr_date)
+        #####except ValueError:
+            #####continue
+        #####g = gdal.Open(lai_file.as_posix())
+        #####this_lai = g.ReadAsArray()
+        #####mask = np.logical_and ( this_lai >=0.01, this_lai<=10.)
+        #####today_distance = (this_lai[mask])[:, None] - \
+                        #####ens_lai[:, curr_ens_loc]
+        #####weights_array += select_sensible(today_distance)
+        #####break
