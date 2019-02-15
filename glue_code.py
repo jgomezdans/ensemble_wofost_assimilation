@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import datetime
+
 from pathlib import Path
 
 import gdal
 
 import numpy as np
 
+import enwofost
 
 def get_corners_lat_long(fname):
     """Retrieves the corners of a GDAL file, and returns the 
@@ -92,7 +94,44 @@ def find_lai_files(file_path, tile):
     return files, dates, doys, corner_locs
 
 
+def run_wofost_ensembles(corner_locs, en_size=20, start_date = datetime.date(2017,10,12)):
+    pkg_location = enwofost.__file__.strip("__init__.py") + "data/"
+    parameter_priors = pkg_location + "par_prior.csv"
+    ensembles = []
+    
+    for corner in corner_locs:
+        lng, lat = corner
+
+        ens_out_fname = f"ens_{lng:6.3f}_{lat:6.3f}.npy"
+        enwofost.ensemble_wofost(lon = lng, lat=lat, start = start_date,
+                    end = None, en_size = en_size, prior_file = parameter_priors, 
+                    weather_type = "ERA", weather_path = "/home/ucfahm0/NC/",
+                    out_en_file = ens_out_fname,
+                    data_dir=pkg_location)
+        ensembles.append(ens_out_fname)
+
+
+    ens_lai = []
+    ens_days = []
+    ens_yield = []
+    for ens_file in ensembles:
+        f = np.load(ens_file)
+        this_lai = np.array([ens['LAI'] for ens in f])
+        this_time = np.array([list(
+            map(lambda x:datetime.date.strftime(x, "%Y%j"), ens['day'])) 
+        for ens in f])
+        this_yield = np.array([ens['Yield'] for ens in f])
+        ens_lai.append(this_lai)
+        ens_days.append(this_time)
+        ens_yield.append(this_yield)
+    ens_lai = np.array(ens_lai).reshape((en_size*5, -1))
+    ens_yield = np.array(ens_yield).reshape((en_size*5, -1))
+    ens_days = np.array(ens_days).reshape((en_size*5, -1))
+    return (ens_days, ens_lai, ens_yield)
 if __name__ == "__main__":
     files, dates, doys, corner_locs = find_lai_files(
         "/home/ucfahm0/S2_data", "T50SLH"
     )
+    
+    ens_days, ens_lai, ens_yield = run_wofost_ensembles(
+        corner_locs, en_size=20, start_date = datetime.date(2017,10,12))
