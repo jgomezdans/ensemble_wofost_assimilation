@@ -193,3 +193,8 @@ if __name__ == "__main__":
 
     assimilated_yield_mean, assimilated_yield_std = match_ensembles_to_lai(files, dates, doys,
                            ens_days, ens_lai, ens_yield)
+    np.savez_compressed("assimilated_yield_mean.npz",
+                        assimilated_yield_mean=assimilated_yield_mean)
+    
+    np.savez_compressed("assimilated_yield_std.npz",
+                        assimilated_yield_mean=assimilated_yield_std)
