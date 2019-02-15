@@ -1,6 +1,11 @@
-import gdal
+#!/usr/bin/env python
+
 import datetime
-from pathlib import Path 
+from pathlib import Path
+
+import gdal
+
+import numpy as np
 
 
 def get_corners_lat_long(fname):
@@ -13,28 +18,56 @@ def get_corners_lat_long(fname):
     locs = []
     for line in L[:-1]:
         # Longitude
-        deg = float(line.split()[5].replace("(", "").split("d")[0] )
-        mins = float(line.split()[5].replace("(", "").split("d")[1].split("'")[0] )
-        secs = float(line.split()[5].replace("(", "").split("d")[1].split("'")[1].split('"')[0] )
-        long = deg + mins/60. + secs/(3600)
+        deg = float(line.split()[5].replace("(", "").split("d")[0])
+        mins = float(
+            line.split()[5].replace("(", "").split("d")[1].split("'")[0]
+        )
+        secs = float(
+            line.split()[5]
+            .replace("(", "")
+            .split("d")[1]
+            .split("'")[1]
+            .split('"')[0]
+        )
+        long = deg + mins / 60.0 + secs / (3600)
         # Latitude
-        deg = float(line.split()[6].replace("(", "").split("d")[0] )
-        mins = float(line.split()[6].replace("(", "").split("d")[1].split("'")[0] )
-        secs = float(line.split()[6].replace("(", "").split("d")[1].split("'")[1].split('"')[0] )
-        lat = deg + mins/60. + secs/(3600)
+        deg = float(line.split()[6].replace("(", "").split("d")[0])
+        mins = float(
+            line.split()[6].replace("(", "").split("d")[1].split("'")[0]
+        )
+        secs = float(
+            line.split()[6]
+            .replace("(", "")
+            .split("d")[1]
+            .split("'")[1]
+            .split('"')[0]
+        )
+        lat = deg + mins / 60.0 + secs / (3600)
         locs.append([long, lat])
     # Center point
     # Longitude
     line = L[-1]
-    deg = float(line.split()[4].replace("(", "").split("d")[0] )
-    mins = float(line.split()[4].replace("(", "").split("d")[1].split("'")[0] )
-    secs = float(line.split()[4].replace("(", "").split("d")[1].split("'")[1].split('"')[0] )
-    long = deg + mins/60. + secs/(3600)
+    deg = float(line.split()[4].replace("(", "").split("d")[0])
+    mins = float(line.split()[4].replace("(", "").split("d")[1].split("'")[0])
+    secs = float(
+        line.split()[4]
+        .replace("(", "")
+        .split("d")[1]
+        .split("'")[1]
+        .split('"')[0]
+    )
+    long = deg + mins / 60.0 + secs / (3600)
     # Latitude
-    deg = float(line.split()[5].replace("(", "").split("d")[0] )
-    mins = float(line.split()[5].replace("(", "").split("d")[1].split("'")[0] )
-    secs = float(line.split()[5].replace("(", "").split("d")[1].split("'")[1].split('"')[0] )
-    lat = deg + mins/60. + secs/(3600)
+    deg = float(line.split()[5].replace("(", "").split("d")[0])
+    mins = float(line.split()[5].replace("(", "").split("d")[1].split("'")[0])
+    secs = float(
+        line.split()[5]
+        .replace("(", "")
+        .split("d")[1]
+        .split("'")[1]
+        .split('"')[0]
+    )
+    lat = deg + mins / 60.0 + secs / (3600)
     locs.append([long, lat])
     return locs
 
@@ -46,19 +79,20 @@ def find_lai_files(file_path, tile):
 
     files = [f for f in file_path.rglob(f"*{tile:s}*/**/lai.tif")]
 
-    files.sort(key=lambda x:x.parents[3].name.split("_")[2])
+    files.sort(key=lambda x: x.parents[3].name.split("_")[2])
 
-    dates = [datetime.datetime.strptime(
-            x.parents[3].name.split("_")[2], "%Y%m%dT%H%M%S") 
-            for x in files]
+    dates = [
+        datetime.datetime.strptime(
+            x.parents[3].name.split("_")[2], "%Y%m%dT%H%M%S"
+        )
+        for x in files
+    ]
     doys = [d.strftime("%Y%j") for d in dates]
     corner_locs = get_corners_lat_long(files[0])
     return files, dates, doys, corner_locs
 
+
 if __name__ == "__main__":
-    files, dates, doys, corner_locs = find_lai_files ("/home/ucfahm0/S2_data",
-    "T50SLH")
-
-    
-
-
+    files, dates, doys, corner_locs = find_lai_files(
+        "/home/ucfahm0/S2_data", "T50SLH"
+    )
